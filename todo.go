@@ -6,10 +6,21 @@ import (
     "fmt"
     "log"
     "flag"
+    "strings"
+    "os/user"
     "net/http"
     "io/ioutil"
+    "path/filepath"
     "encoding/json"
 )
+
+import "gopkg.in/yaml.v2"
+
+
+type config struct {
+    Url     string  `yaml:"url"`
+    Timeout int     `yaml:"timeout"`
+}
 
 type Tasks struct {
     Todo []Task `json:"todo"`
@@ -56,9 +67,39 @@ func list(url string) {
 }
 
 
+func (c *config) fetch() *config {
+
+    usr, err := user.Current()
+    if err != nil {
+        log.Fatal(err)
+    }
+
+    file, err := ioutil.ReadFile( filepath.Join(usr.HomeDir, ".todo.config") )
+    if err != nil {
+        log.Fatal(err)
+    }
+
+    err = yaml.Unmarshal(file, c)
+    if err != nil {
+        log.Fatal(err)
+    }
+
+    if c.Url == "" {
+        log.Fatal("Must specify a url in ~/.todo.config")
+    }
+
+    if !strings.Contains(c.Url, "/api/Tasks") {
+        log.Fatal("Url must contain the API path '/api/Tasks'")
+    }
+
+    return c
+}
+
+
 func main() {
 
-    const url string = `http://104.43.236.196:5000/api/Tasks/`
+    var c config
+    c.fetch()
 
     listCmd  := flag.NewFlagSet("list",  flag.ExitOnError)
     addCmd   := flag.NewFlagSet("add",   flag.ExitOnError)
@@ -72,7 +113,7 @@ func main() {
 
     case "list":
         listCmd.Parse(os.Args[2:])
-        list(url)
+        list(c.Url)
 
     case "add":
         if argCount < 2 {

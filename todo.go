@@ -2,8 +2,10 @@
 package main
 
 import (
+    "os"
     "fmt"
     "log"
+    "flag"
     "net/http"
     "io/ioutil"
     "encoding/json"
@@ -56,7 +58,32 @@ func list(url string) {
 
 func main() {
 
-    var url string = `http://104.43.236.196:5000/api/Tasks/`
-    list(url)
+    const url string = `http://104.43.236.196:5000/api/Tasks/`
+
+    listCmd  := flag.NewFlagSet("list",  flag.ExitOnError)
+    addCmd   := flag.NewFlagSet("add",   flag.ExitOnError)
+    argCount := len(os.Args[1:])
+
+    if argCount < 1 {
+        log.Fatal("Need a command [ list, add ]")
+    }
+
+    switch os.Args[1] {
+
+    case "list":
+        listCmd.Parse(os.Args[2:])
+        list(url)
+
+    case "add":
+        if argCount < 2 {
+            log.Fatal("Need a task to add")
+        }
+        addCmd.Parse(os.Args[2:])
+        fmt.Println(addCmd.Args())
+
+    default:
+        fmt.Println("Expected different command than [", os.Args[1], "]")
+        log.Fatal("Need a command [ list, add ]")
+    }
 
 }

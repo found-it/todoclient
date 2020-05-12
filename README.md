@@ -8,4 +8,10 @@ Container.
 init
 list
 add "task to add"
-``
+```
+
+### Installation
+```
+go build -o $GOBIN/todo
+```
+

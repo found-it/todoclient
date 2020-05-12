@@ -6,6 +6,7 @@ import (
     "fmt"
     "log"
     "flag"
+    "bytes"
     "strings"
     "os/user"
     "net/http"
@@ -45,28 +46,6 @@ func printer(task []Task) {
 }
 
 
-func list(url string) {
-
-    resp, err := http.Get(url)
-    if err != nil {
-        log.Fatal(err)
-    }
-
-    buf, err := ioutil.ReadAll(resp.Body)
-    defer resp.Body.Close()
-
-    if err != nil {
-        log.Fatal(err)
-    }
-
-    var tasks []Task
-    json.Unmarshal(buf, &tasks)
-
-    printer(tasks)
-
-}
-
-
 func (c *config) fetch() *config {
 
     usr, err := user.Current()
@@ -96,6 +75,52 @@ func (c *config) fetch() *config {
 }
 
 
+func list(c config) {
+
+    resp, err := http.Get(c.Url)
+    if err != nil {
+        log.Fatal(err)
+    }
+
+    buf, err := ioutil.ReadAll(resp.Body)
+    defer resp.Body.Close()
+
+    if err != nil {
+        log.Fatal(err)
+    }
+
+    var tasks []Task
+    json.Unmarshal(buf, &tasks)
+
+    printer(tasks)
+
+}
+
+func add(c config, name string) {
+
+    fmt.Printf("Sending '%s' to '%s'", name, c.Url)
+
+    task := &Task {
+        Complete: false,
+        Name: name,
+    }
+
+    jsontask, err := json.Marshal(task)
+    if err != nil {
+        log.Fatal(err)
+    }
+
+    resp, err := http.Post(c.Url, "application/json", bytes.NewReader(jsontask))
+    if err != nil {
+        log.Fatal(err)
+    }
+
+    if resp.StatusCode != 201 {
+        log.Fatalf("[%s] Error posting task '%s'", resp.Status, name)
+    }
+}
+
+
 func main() {
 
     var c config
@@ -113,14 +138,14 @@ func main() {
 
     case "list":
         listCmd.Parse(os.Args[2:])
-        list(c.Url)
+        list(c)
 
     case "add":
         if argCount < 2 {
             log.Fatal("Need a task to add")
         }
         addCmd.Parse(os.Args[2:])
-        fmt.Println(addCmd.Args())
+        add(c, addCmd.Arg(0))
 
     default:
         fmt.Println("Expected different command than [", os.Args[1], "]")

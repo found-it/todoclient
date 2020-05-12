@@ -13,9 +13,9 @@ import (
     "io/ioutil"
     "path/filepath"
     "encoding/json"
+    "gopkg.in/yaml.v2"
 )
 
-import "gopkg.in/yaml.v2"
 
 
 type config struct {
@@ -35,6 +35,10 @@ type Task struct {
     // Tags    []string    `json:"tags"`
 }
 
+
+//
+//  Helper function to print out the todos
+//
 func printer(task []Task) {
     for i := 0; i < len(task); i++ {
         var status string = "TODO"
@@ -45,12 +49,25 @@ func printer(task []Task) {
     }
 }
 
+
+//
+//  Helper function to check errors
+//
 func check(e error) {
     if e != nil {
         log.Fatal(e)
     }
 }
 
+
+
+//
+//  Initialize the configuration
+//
+//  TODO: --force initialize if there is already a file there
+//  TODO: --url to initialize with
+//  TODO: --timeout to initialize with
+//
 func initialize() {
 
     usr, err := user.Current()

@@ -177,9 +177,9 @@ type System struct {
 //
 //  Print out the system info
 //
-func get(c config, path string) {
+func system(c config) {
 
-    url := c.Url[0:len(c.Url)-6] + path
+    url := c.Url[0:len(c.Url)-6] + "system"
 
     resp, err := http.Get(url)
     check(err)
@@ -190,7 +190,6 @@ func get(c config, path string) {
 
     ff := strings.Replace(string(buf), "\\", "", -1)
     ff = ff[1:len(ff)-1]
-    fmt.Println(ff)
 
     var system System
     json.Unmarshal([]byte(ff), &system)
@@ -243,7 +242,7 @@ func main() {
     listCmd  := flag.NewFlagSet("list",  flag.ExitOnError)
     addCmd   := flag.NewFlagSet("add",   flag.ExitOnError)
     initCmd  := flag.NewFlagSet("init",  flag.ExitOnError)
-    getCmd   := flag.NewFlagSet("get",  flag.ExitOnError)
+    // sysCmd   := flag.NewFlagSet("system",  flag.ExitOnError)
     argCount := len(os.Args[1:])
 
     if argCount < 1 {
@@ -273,12 +272,8 @@ func main() {
         addCmd.Parse(os.Args[2:])
         add(c, addCmd.Arg(0))
 
-    case "get":
-        if argCount < 2 {
-            log.Fatal("Need a path to get")
-        }
-        getCmd.Parse(os.Args[2:])
-        get(c, getCmd.Arg(0))
+    case "system":
+        system(c)
 
     default:
         fmt.Println("Expected different command than [", os.Args[1], "]")

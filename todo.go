@@ -167,6 +167,43 @@ func list(c config) {
 
 
 //
+//  Get the system info
+//
+type System struct {
+    Hostname    string      `json:"hostname"`
+    Ip          []string    `json:"ip"`
+}
+
+//
+//  Print out the system info
+//
+func get(c config, path string) {
+
+    url := c.Url[0:len(c.Url)-6] + path
+
+    resp, err := http.Get(url)
+    check(err)
+
+    buf, err := ioutil.ReadAll(resp.Body)
+    defer resp.Body.Close()
+    check(err)
+
+    ff := strings.Replace(string(buf), "\\", "", -1)
+    ff = ff[1:len(ff)-1]
+    fmt.Println(ff)
+
+    var system System
+    json.Unmarshal([]byte(ff), &system)
+
+    // Print out the info
+    fmt.Println("Hostname:", system.Hostname)
+    for i := 0; i < len(system.Ip); i++ {
+        fmt.Println("IP:", system.Ip[i])
+    }
+}
+
+
+//
 //  Add function
 //
 //  Arguments
@@ -205,7 +242,8 @@ func main() {
 
     listCmd  := flag.NewFlagSet("list",  flag.ExitOnError)
     addCmd   := flag.NewFlagSet("add",   flag.ExitOnError)
-    initCmd   := flag.NewFlagSet("init",  flag.ExitOnError)
+    initCmd  := flag.NewFlagSet("init",  flag.ExitOnError)
+    getCmd   := flag.NewFlagSet("get",  flag.ExitOnError)
     argCount := len(os.Args[1:])
 
     if argCount < 1 {
@@ -234,6 +272,13 @@ func main() {
         }
         addCmd.Parse(os.Args[2:])
         add(c, addCmd.Arg(0))
+
+    case "get":
+        if argCount < 2 {
+            log.Fatal("Need a path to get")
+        }
+        getCmd.Parse(os.Args[2:])
+        get(c, getCmd.Arg(0))
 
     default:
         fmt.Println("Expected different command than [", os.Args[1], "]")

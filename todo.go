@@ -7,8 +7,8 @@ import (
     "log"
     "flag"
     "bytes"
-    "strings"
     "os/user"
+    "hash/fnv"
     "net/http"
     "io/ioutil"
     "path/filepath"
@@ -36,17 +36,35 @@ type Task struct {
 }
 
 
+func hash(s string) uint32 {
+    h := fnv.New32a()
+    h.Write([]byte(s))
+    return h.Sum32()
+}
+
+
 //
 //  Helper function to print out the todos
 //
 func printer(task []Task) {
+
+    var c config
+    c.fetch()
+
+    fmt.Println()
+    fmt.Println("Todo Server v0.1.2")
+    fmt.Println()
+    system(c)
+    fmt.Println("---------------------------------")
+    fmt.Println()
     for i := 0; i < len(task); i++ {
         var status string = "TODO"
         if task[i].Complete {
             status = "DONE"
         }
-        fmt.Println("  " + status + ": " + task[i].Name)// , task[i].Tags)
+        fmt.Println(status + ": " + task[i].Name)// , task[i].Tags)
     }
+    fmt.Println()
 }
 
 
@@ -83,7 +101,7 @@ func initialize() {
     } else if os.IsNotExist(err) {
 
         cfg := `
-#url: http://localhost/api/Tasks
+#url: http://localhost:9000
 #timeout: 10000
 `
         err = ioutil.WriteFile(configfile, []byte(cfg), 0644)
@@ -124,10 +142,6 @@ func (c *config) fetch() *config {
             log.Fatal("Must specify a url in ~/.todo.config")
         }
 
-        if !strings.Contains(c.Url, "/api/Tasks") {
-            log.Fatal("Url must contain the API path '/api/Tasks'")
-        }
-
     } else if os.IsNotExist(err) {
 
         fmt.Println("No configuration found at:", configfile)
@@ -150,7 +164,9 @@ func (c *config) fetch() *config {
 //
 func list(c config) {
 
-    resp, err := http.Get(c.Url)
+    const path = "/api/tasks/"
+
+    resp, err := http.Get(c.Url + path)
     check(err)
 
     buf, err := ioutil.ReadAll(resp.Body)
@@ -167,38 +183,27 @@ func list(c config) {
 
 
 //
-//  Get the system info
-//
-type System struct {
-    Hostname    string      `json:"hostname"`
-    Ip          []string    `json:"ip"`
-}
-
-//
 //  Print out the system info
 //
 func system(c config) {
 
-    url := c.Url[0:len(c.Url)-6] + "system"
+    const path = "/api/system"
 
-    resp, err := http.Get(url)
+    resp, err := http.Get(c.Url + path)
     check(err)
 
     buf, err := ioutil.ReadAll(resp.Body)
     defer resp.Body.Close()
     check(err)
 
-    ff := strings.Replace(string(buf), "\\", "", -1)
-    ff = ff[1:len(ff)-1]
-
-    var system System
-    json.Unmarshal([]byte(ff), &system)
-
-    // Print out the info
-    fmt.Println("Hostname:", system.Hostname)
-    for i := 0; i < len(system.Ip); i++ {
-        fmt.Println("IP:", system.Ip[i])
+    type SystemInfo struct {
+        Hostname string `json:"hostname"`
     }
+
+    var si SystemInfo
+    json.Unmarshal(buf, &si)
+
+    fmt.Println("Hostname: ", si.Hostname)
 }
 
 
@@ -211,9 +216,12 @@ func system(c config) {
 //
 func add(c config, name string) {
 
-    fmt.Printf("Sending '%s' to '%s'", name, c.Url)
+    const path = "/api/create"
+
+    fmt.Printf("Sending '%s' to '%s'", name, c.Url + path)
 
     task := &Task {
+        Id: hash(name),
         Complete: false,
         Name: name,
     }
@@ -221,7 +229,7 @@ func add(c config, name string) {
     jsontask, err := json.Marshal(task)
     check(err)
 
-    resp, err := http.Post(c.Url, "application/json", bytes.NewReader(jsontask))
+    resp, err := http.Post(c.Url + path, "application/json", bytes.NewReader(jsontask))
     check(err)
 
     if resp.StatusCode != 201 {

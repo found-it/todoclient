@@ -3,17 +3,21 @@ package main
 
 import (
     "os"
+    // "io"
     "fmt"
     "log"
     "flag"
     "bytes"
+    // "strings"
     "os/user"
+    "strconv"
     "hash/fnv"
     "net/http"
     "io/ioutil"
     "path/filepath"
     "encoding/json"
     "gopkg.in/yaml.v2"
+    "github.com/fatih/color"
 )
 
 
@@ -29,17 +33,17 @@ type Tasks struct {
 }
 
 type Task struct {
-    Id       uint32     `json:"id"`
+    Id       string     `json:"id"`
     Name     string     `json:"name"`
     Complete bool       `json:"complete"`
     // Tags    []string    `json:"tags"`
 }
 
 
-func hash(s string) uint32 {
+func hash(s string) string {
     h := fnv.New32a()
     h.Write([]byte(s))
-    return h.Sum32()
+    return strconv.FormatUint(uint64(h.Sum32()), 10)
 }
 
 
@@ -48,21 +52,30 @@ func hash(s string) uint32 {
 //
 func printer(task []Task) {
 
+    var verbose = true
     var c config
     c.fetch()
 
+    yellow  := color.New(color.FgYellow, color.Bold).SprintFunc()
+    green   := color.New(color.FgGreen, color.Bold).SprintFunc()
+    magenta := color.New(color.FgMagenta).SprintFunc()
+    blue    := color.New(color.FgBlue).SprintFunc()
+
     fmt.Println()
-    fmt.Println("Todo Server v0.1.2")
-    fmt.Println()
-    system(c)
+    fmt.Printf("%s [%s]\n", green("Todo Server"), magenta(system(c)))
     fmt.Println("---------------------------------")
     fmt.Println()
+
     for i := 0; i < len(task); i++ {
         var status string = "TODO"
         if task[i].Complete {
             status = "DONE"
         }
-        fmt.Println(status + ": " + task[i].Name)// , task[i].Tags)
+        if verbose {
+            fmt.Printf("%-10s |  %s: %s\n", task[i].Id, yellow(status), blue(task[i].Name))// , task[i].Tags)
+        } else {
+            fmt.Printf("%s: %s\n", yellow(status), blue(task[i].Name))// , task[i].Tags)
+        }
     }
     fmt.Println()
 }
@@ -175,17 +188,17 @@ func list(c config) {
     check(err)
 
     var tasks []Task
-    json.Unmarshal(buf, &tasks)
+    err = json.Unmarshal(buf, &tasks)
+    check(err)
 
     printer(tasks)
-
 }
 
 
 //
 //  Print out the system info
 //
-func system(c config) {
+func system(c config) string {
 
     const path = "/api/system"
 
@@ -203,7 +216,7 @@ func system(c config) {
     var si SystemInfo
     json.Unmarshal(buf, &si)
 
-    fmt.Println("Hostname: ", si.Hostname)
+    return si.Hostname
 }
 
 
@@ -281,7 +294,7 @@ func main() {
         add(c, addCmd.Arg(0))
 
     case "system":
-        system(c)
+        fmt.Println("Hostname: ", system(c))
 
     default:
         fmt.Println("Expected different command than [", os.Args[1], "]")

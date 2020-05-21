@@ -53,6 +53,7 @@ func hash(s string) string {
 func printer(task []Task) {
 
     var verbose = true
+    var all = true
     var c config
     c.fetch()
 
@@ -70,6 +71,9 @@ func printer(task []Task) {
         var status string = "TODO"
         if task[i].Complete {
             status = "DONE"
+            if !all {
+                continue
+            }
         }
         if verbose {
             fmt.Printf("%-10s |  %s: %s\n", task[i].Id, yellow(status), blue(task[i].Name))// , task[i].Tags)
@@ -209,6 +213,8 @@ func system(c config) string {
     defer resp.Body.Close()
     check(err)
 
+    fmt.Println("System: ", string(buf))
+
     type SystemInfo struct {
         Hostname string `json:"hostname"`
     }
@@ -251,6 +257,57 @@ func add(c config, name string) {
 }
 
 
+
+func del(c config, id string) {
+
+    var path = "/api/delete/" + id
+
+    client := &http.Client{}
+
+    req, err := http.NewRequest("DELETE", c.Url + path, nil)
+    check(err)
+
+    res, err := client.Do(req)
+    check(err)
+
+    defer res.Body.Close()
+
+    body, err := ioutil.ReadAll(res.Body)
+    check(err)
+
+    fmt.Println(string(body))
+}
+
+func done (c config, id string) {
+
+    var path = "/api/update/" + id
+
+    client := &http.Client{}
+
+    t := &Task {
+        Complete: true,
+    }
+
+    tjson, err := json.Marshal(t)
+    check(err)
+
+    req, err := http.NewRequest("PATCH", c.Url + path, bytes.NewReader(tjson))
+    check(err)
+
+    res, err := client.Do(req)
+    check(err)
+
+    defer res.Body.Close()
+
+    body, err := ioutil.ReadAll(res.Body)
+    check(err)
+
+    fmt.Println(string(body))
+}
+
+
+
+
 //
 //  Main function
 //
@@ -260,9 +317,11 @@ func add(c config, name string) {
 //
 func main() {
 
-    listCmd  := flag.NewFlagSet("list",  flag.ExitOnError)
-    addCmd   := flag.NewFlagSet("add",   flag.ExitOnError)
-    initCmd  := flag.NewFlagSet("init",  flag.ExitOnError)
+    listCmd  := flag.NewFlagSet("list", flag.ExitOnError)
+    addCmd   := flag.NewFlagSet("add",  flag.ExitOnError)
+    initCmd  := flag.NewFlagSet("init", flag.ExitOnError)
+    delCmd   := flag.NewFlagSet("del",  flag.ExitOnError)
+    doneCmd  := flag.NewFlagSet("done", flag.ExitOnError)
     // sysCmd   := flag.NewFlagSet("system",  flag.ExitOnError)
     argCount := len(os.Args[1:])
 
@@ -292,6 +351,20 @@ func main() {
         }
         addCmd.Parse(os.Args[2:])
         add(c, addCmd.Arg(0))
+
+    case "del":
+        if argCount < 2 {
+            log.Fatal("Need a task id to delete")
+        }
+        delCmd.Parse(os.Args[2:])
+        del(c, delCmd.Arg(0))
+
+    case "done":
+        if argCount < 2 {
+            log.Fatal("Need a task id to mark done")
+        }
+        doneCmd.Parse(os.Args[2:])
+        done(c, doneCmd.Arg(0))
 
     case "system":
         fmt.Println("Hostname: ", system(c))

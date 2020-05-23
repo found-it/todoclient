@@ -67,6 +67,15 @@ func printer(task []Task) {
     fmt.Println("---------------------------------")
     fmt.Println()
 
+    max := 0
+    for _, t := range task {
+        if len(t.Name) > max {
+            max = len(t.Name)
+        }
+    }
+
+    max = max + 10
+
     for i := 0; i < len(task); i++ {
         var status string = "TODO"
         if task[i].Complete {
@@ -76,7 +85,7 @@ func printer(task []Task) {
             }
         }
         if verbose {
-            fmt.Printf("%-10s |  %s: %s\n", task[i].Id, yellow(status), blue(task[i].Name))// , task[i].Tags)
+            fmt.Printf("%s: %-*s  %s\n", yellow(status), max, blue(task[i].Name), task[i].Id);
         } else {
             fmt.Printf("%s: %s\n", yellow(status), blue(task[i].Name))// , task[i].Tags)
         }
@@ -213,8 +222,6 @@ func system(c config) string {
     defer resp.Body.Close()
     check(err)
 
-    fmt.Println("System: ", string(buf))
-
     type SystemInfo struct {
         Hostname string `json:"hostname"`
     }
@@ -326,7 +333,7 @@ func main() {
     argCount := len(os.Args[1:])
 
     if argCount < 1 {
-        log.Fatal("Need a command [ init, list, add ]")
+        log.Fatal("Need a command [ init, list, add, del, done ]")
     }
 
     if os.Args[1] == "init" {
@@ -371,7 +378,7 @@ func main() {
 
     default:
         fmt.Println("Expected different command than [", os.Args[1], "]")
-        log.Fatal("Need a command [ list, add ]")
+        log.Fatal("Need a command [ list, add, del, done, init ]")
     }
 
 }

@@ -50,10 +50,9 @@ func hash(s string) string {
 //
 //  Helper function to print out the todos
 //
-func printer(task []Task) {
+func printer(task []Task, all bool) {
 
     var verbose = true
-    var all = true
     var c config
     c.fetch()
 
@@ -76,18 +75,25 @@ func printer(task []Task) {
 
     max = max + 10
 
-    for i := 0; i < len(task); i++ {
-        var status string = "TODO"
-        if task[i].Complete {
-            status = "DONE"
-            if !all {
-                continue
+    for _, t := range task {
+        if !t.Complete {
+            if verbose {
+                fmt.Printf("%s: %-*s  %s\n", yellow("TODO"), max, blue(t.Name), t.Id);
+            } else {
+                fmt.Printf("%s: %s\n", yellow("TODO"), blue(t.Name))// , task[i].Tags)
             }
         }
-        if verbose {
-            fmt.Printf("%s: %-*s  %s\n", yellow(status), max, blue(task[i].Name), task[i].Id);
-        } else {
-            fmt.Printf("%s: %s\n", yellow(status), blue(task[i].Name))// , task[i].Tags)
+    }
+    if all {
+        fmt.Println()
+        for _, t := range task {
+            if t.Complete {
+                if verbose {
+                    fmt.Printf("%s: %-*s  %s\n", yellow("DONE"), max, blue(t.Name), t.Id);
+                } else {
+                    fmt.Printf("%s: %s\n", yellow("DONE"), blue(t.Name))// , task[i].Tags)
+                }
+            }
         }
     }
     fmt.Println()
@@ -188,7 +194,7 @@ func (c *config) fetch() *config {
 //  Arguments
 //    c     Configuration for server
 //
-func list(c config) {
+func list(c config, all bool) {
 
     const path = "/api/tasks/"
 
@@ -204,7 +210,7 @@ func list(c config) {
     err = json.Unmarshal(buf, &tasks)
     check(err)
 
-    printer(tasks)
+    printer(tasks, all)
 }
 
 
@@ -325,6 +331,7 @@ func done (c config, id string) {
 func main() {
 
     listCmd  := flag.NewFlagSet("list", flag.ExitOnError)
+    listAll  := listCmd.Bool("a", false, "all")
     addCmd   := flag.NewFlagSet("add",  flag.ExitOnError)
     initCmd  := flag.NewFlagSet("init", flag.ExitOnError)
     delCmd   := flag.NewFlagSet("del",  flag.ExitOnError)
@@ -350,7 +357,7 @@ func main() {
 
     case "list":
         listCmd.Parse(os.Args[2:])
-        list(c)
+        list(c, *listAll)
 
     case "add":
         if argCount < 2 {
